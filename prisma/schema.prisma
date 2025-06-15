@@ -1,0 +1,45 @@
+generator client {
+ provider      = "prisma-client-js"
+ binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+
+datasource db {
+ provider = "mysql"
+ url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  name      String
+  password  String
+  posts     Post[]    @relation("UserPosts")
+  comments  Comment[] @relation("UserComments")
+  createdAt DateTime  @default(now())
+}
+
+model Post {
+  id         Int       @id @default(autoincrement())
+  title      String
+  content    String
+  author     User      @relation("UserPosts", fields: [authorId], references: [id])
+  authorId   Int
+  comments   Comment[] @relation("PostComments")
+  published  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  text      String
+  author    User     @relation("UserComments", fields: [authorId], references: [id])
+  authorId  Int
+  post      Post     @relation("PostComments", fields: [postId], references: [id])
+  postId    Int
+  createdAt DateTime @default(now())
+}
+
+
+
+
