@@ -2,7 +2,10 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { generateAccessToken, generateRefreshToken } from "../middlewares/auth.middleware";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../middlewares/auth.middleware";
 
 const prisma = new PrismaClient();
 
@@ -12,7 +15,7 @@ export const login = (req: Request, res: Response) => {
 
 export const registerUser = async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
-  console.log("Received registration request:", req.body); // For debugging purposes
+  // console.log("Received registration request:", req.body); // For debugging purposes
 
   // --- 1. Basic Input Validation ---
   if (!name || !email || !password) {
@@ -121,7 +124,7 @@ export const loginUser = async (req: Request, res: Response) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
-        const accessToken = generateAccessToken(String(user.id));
+    const accessToken = generateAccessToken(String(user.id));
     const refreshToken = generateRefreshToken(String(user.id));
 
     // 5. If passwords match, user is authenticated!
@@ -129,22 +132,22 @@ export const loginUser = async (req: Request, res: Response) => {
     const { password: _, ...userWithoutPassword } = user; // Destructure to exclude password
 
     const options = {
-    httpOnly: true,
-    secure: true,
-  };
+      httpOnly: true,
+      secure: true,
+    };
 
     return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json({
-      message: "Login successful!",
-      user: userWithoutPassword,
-      accessToken,
-      refreshToken
-      // You would typically generate and send a JWT token here
-      // token: generateAuthToken(user.id)
-    });
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json({
+        message: "Login successful!",
+        user: userWithoutPassword,
+        accessToken,
+        refreshToken,
+        // You would typically generate and send a JWT token here
+        // token: generateAuthToken(user.id)
+      });
   } catch (error) {
     console.error("Login error:", error);
     return res
@@ -154,106 +157,6 @@ export const loginUser = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
-export const getCurrentUser = async (req:Request, res:Response) => {
-   if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized: User not logged in." });
-  }
-  return res.status(200).json({
-      message: "User fetched successfully.",
-      user: req.user
-    });
-};
 
-// export const refreshAccessToken = async (req: Request, res: Response) => {
-//   const refreshToken = req.cookies.refreshToken;
 
-//   if (!refreshToken) {
-//     return res.status(401).json({ message: "Refresh token not found." });
-//   }
 
-//   try {
-//     const payload = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as { userId: string };
-//     const newAccessToken = generateAccessToken(payload.userId);
-
-//     return res.status(200).json({ accessToken: newAccessToken });
-//   } catch (error) {
-//     return res.status(403).json({ message: "Invalid refresh token." });
-//   }
-// };
-
-/*export const registerUser = asyncHandler(async (req:Request, res:Response) => {
-
-  // get user details from frontend
-  const { username, email, fullName, password } = req.body;
-  // console.log(req.body);
-
-  // if (fullName === "") {
-  //     throw new ApiError(400, "fullName is required") //we can check for every entry by using if statement like this
-  // }
-
-  //this is way to validate that every entry in req.body is not empty  by using  one if statement
-  // validation - not empty
-  if (
-    [username, email, fullName, password].some((field) => field?.trim() === "")
-  ) {
-    throw new ApiError(400, "All fields are required");
-  }
-
-  // check if user already exists: username, email
-  const existedUser = await User.findOne({
-    $or: [{ username }, { email }],
-  });
-
-  if (existedUser) {
-    throw new ApiError(409, "User with userName or email already exists");
-  }
-
-  // check for images, check for avatar
- 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  let coverImageLocalPath;
-  if (
-    req.files &&
-    Array.isArray(req.files.coverImage) &&
-    req.files.coverImage.length > 0
-  ) {
-    coverImageLocalPath = req.files.coverImage[0].path;
-  }
-
-  if (!avatarLocalPath) {
-    throw new ApiError(400, " Avatar file is required");
-  }
-
-  // upload avatar and coverImage to cloudinary, avatar
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-
-  if (!avatar) {
-    throw new ApiError(400, " Avatar file is required");
-  }
-
-  // create user object - create entry in db
-  const user = await User.create({
-    fullName,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
-    email,
-    password,
-    username: username.toLowerCase(),
-  });
-
-  // remove password and refresh token field from response
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
-  }
-
-  return res
-    .status(201)
-    .json(new ApiResponse(200, createdUser, "User registered Successfully"));
-});
-
-*/

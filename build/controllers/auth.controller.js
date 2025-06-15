@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCurrentUser = exports.loginUser = exports.registerUser = exports.login = void 0;
+exports.loginUser = exports.registerUser = exports.login = void 0;
 const client_1 = require("@prisma/client");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const auth_middleware_1 = require("../middlewares/auth.middleware");
@@ -34,7 +34,7 @@ const login = (req, res) => {
 exports.login = login;
 const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { name, email, password } = req.body;
-    console.log("Received registration request:", req.body); // For debugging purposes
+    // console.log("Received registration request:", req.body); // For debugging purposes
     // --- 1. Basic Input Validation ---
     if (!name || !email || !password) {
         return res
@@ -151,7 +151,7 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             message: "Login successful!",
             user: userWithoutPassword,
             accessToken,
-            refreshToken
+            refreshToken,
             // You would typically generate and send a JWT token here
             // token: generateAuthToken(user.id)
         });
@@ -167,102 +167,3 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.loginUser = loginUser;
-const getCurrentUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized: User not logged in." });
-    }
-    return res.status(200).json({
-        message: "User fetched successfully.",
-        user: req.user
-    });
-});
-exports.getCurrentUser = getCurrentUser;
-// export const refreshAccessToken = async (req: Request, res: Response) => {
-//   const refreshToken = req.cookies.refreshToken;
-//   if (!refreshToken) {
-//     return res.status(401).json({ message: "Refresh token not found." });
-//   }
-//   try {
-//     const payload = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as { userId: string };
-//     const newAccessToken = generateAccessToken(payload.userId);
-//     return res.status(200).json({ accessToken: newAccessToken });
-//   } catch (error) {
-//     return res.status(403).json({ message: "Invalid refresh token." });
-//   }
-// };
-/*export const registerUser = asyncHandler(async (req:Request, res:Response) => {
-
-  // get user details from frontend
-  const { username, email, fullName, password } = req.body;
-  // console.log(req.body);
-
-  // if (fullName === "") {
-  //     throw new ApiError(400, "fullName is required") //we can check for every entry by using if statement like this
-  // }
-
-  //this is way to validate that every entry in req.body is not empty  by using  one if statement
-  // validation - not empty
-  if (
-    [username, email, fullName, password].some((field) => field?.trim() === "")
-  ) {
-    throw new ApiError(400, "All fields are required");
-  }
-
-  // check if user already exists: username, email
-  const existedUser = await User.findOne({
-    $or: [{ username }, { email }],
-  });
-
-  if (existedUser) {
-    throw new ApiError(409, "User with userName or email already exists");
-  }
-
-  // check for images, check for avatar
- 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  let coverImageLocalPath;
-  if (
-    req.files &&
-    Array.isArray(req.files.coverImage) &&
-    req.files.coverImage.length > 0
-  ) {
-    coverImageLocalPath = req.files.coverImage[0].path;
-  }
-
-  if (!avatarLocalPath) {
-    throw new ApiError(400, " Avatar file is required");
-  }
-
-  // upload avatar and coverImage to cloudinary, avatar
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-
-  if (!avatar) {
-    throw new ApiError(400, " Avatar file is required");
-  }
-
-  // create user object - create entry in db
-  const user = await User.create({
-    fullName,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
-    email,
-    password,
-    username: username.toLowerCase(),
-  });
-
-  // remove password and refresh token field from response
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
-  }
-
-  return res
-    .status(201)
-    .json(new ApiResponse(200, createdUser, "User registered Successfully"));
-});
-
-*/
