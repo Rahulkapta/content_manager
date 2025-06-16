@@ -1,17 +1,12 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import {
   generateAccessToken,
   generateRefreshToken,
 } from "../middlewares/auth.middleware";
 
 const prisma = new PrismaClient();
-
-export const login = (req: Request, res: Response) => {
-  res.send("login page is working");
-};
 
 export const registerUser = async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
@@ -157,6 +152,3 @@ export const loginUser = async (req: Request, res: Response) => {
     await prisma.$disconnect();
   }
 };
-
-
-

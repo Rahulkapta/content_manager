@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
+const multer_middleware_1 = require("../middlewares/multer.middleware");
+const post_controller_1 = require("../controllers/post.controller");
+const router = (0, express_1.Router)();
+router.route("/").post(auth_middleware_1.verifyJWT, multer_middleware_1.upload.single("content"), post_controller_1.publishPost).get(auth_middleware_1.verifyJWT, post_controller_1.listPosts);
+router.route("/:id").get(auth_middleware_1.verifyJWT, post_controller_1.getPostById).patch(auth_middleware_1.verifyJWT, multer_middleware_1.upload.single("content"), post_controller_1.updatePost).delete(auth_middleware_1.verifyJWT, post_controller_1.deletePost);
+exports.default = router;

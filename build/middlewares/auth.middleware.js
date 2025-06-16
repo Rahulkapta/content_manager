@@ -19,7 +19,7 @@ const prisma = new client_1.PrismaClient();
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "access_secret_key";
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || "refresh_secret_key";
 const generateAccessToken = (userId) => {
-    return jsonwebtoken_1.default.sign({ userId }, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
+    return jsonwebtoken_1.default.sign({ userId }, ACCESS_TOKEN_SECRET, { expiresIn: "1d" });
 };
 exports.generateAccessToken = generateAccessToken;
 const generateRefreshToken = (userId) => {
