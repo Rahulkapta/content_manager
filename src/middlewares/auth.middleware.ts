@@ -36,10 +36,13 @@ export const verifyJWT = async (req: Request, res: Response, next: NextFunction)
   try {
     // 2. Verify the token
     const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET) as JwtPayload;
+    console.log(decoded);
+    
 
     if (!decoded?.userId) {
       return res.status(401).json({ message: "Invalid token payload" });
     }
+    const id = decoded.userId
 
     // 3. Find the user in the database
     const user = await prisma.user.findUnique({
@@ -57,7 +60,6 @@ export const verifyJWT = async (req: Request, res: Response, next: NextFunction)
 
     // 4. Attach user to request
     req.user = user;
-
     next();
   } catch (error) {
     console.error("JWT verification error:", error);

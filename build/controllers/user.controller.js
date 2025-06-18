@@ -52,6 +52,7 @@ const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 });
 exports.getAllUsers = getAllUsers;
 const getCurrentUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(req.user);
     if (!req.user) {
         return res
             .status(401)

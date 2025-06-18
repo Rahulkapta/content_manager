@@ -10,9 +10,9 @@ import {
 
 const router: Router = Router();
 
-router.route("/users").get(verifyJWT, getAllUsers);
+router.route("/").get(verifyJWT, getAllUsers);
 router
-  .route("/users/:id")
+  .route("/:id")
   .get(verifyJWT, getUserById)
   .patch(verifyJWT, updateUser)
   .delete(verifyJWT, deleteUser);

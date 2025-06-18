@@ -23,71 +23,191 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginUser = exports.registerUser = exports.login = void 0;
+exports.loginUser = exports.verifyOTP = exports.registerUser = void 0;
 const client_1 = require("@prisma/client");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const nodemailer_1 = __importDefault(require("nodemailer"));
+const crypto_1 = require("crypto");
+const validators_1 = require("../utils/validators");
 const auth_middleware_1 = require("../middlewares/auth.middleware");
 const prisma = new client_1.PrismaClient();
-const login = (req, res) => {
-    res.send("login page is working");
-};
-exports.login = login;
+// Configure nodemailer SMTP transporter
+const transporter = nodemailer_1.default.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === "true", // use TLS if true (usually port 465)
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
+function generateOtp() {
+    // crypto.randomInt(100000, 1000000) yields a secure 6-digit number [100000–999999]
+    const code = (0, crypto_1.randomInt)(100000, 1000000);
+    return code.toString().padStart(6, "0");
+}
+const OTP_EXPIRATION_MS = 5 * 60 * 1000;
 const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, email, password } = req.body;
-    // console.log("Received registration request:", req.body); // For debugging purposes
-    // --- 1. Basic Input Validation ---
-    if (!name || !email || !password) {
-        return res
-            .status(400)
-            .json({ message: "Name, email, and password are all required fields." });
+    const { email, name, password } = req.body;
+    // Basic validation
+    if (!email || !name || !password) {
+        return res.status(400).json({ error: "Missing fields" });
     }
-    // --- 2. Password Hashing ---
-    const saltRounds = 10; // Recommended number of salt rounds for bcrypt
-    let hashedPassword;
-    try {
-        hashedPassword = yield bcryptjs_1.default.hash(password, saltRounds);
+    if (!(0, validators_1.isValidEmail)(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
     }
-    catch (error) {
-        console.error("Error hashing password:", error);
-        return res
-            .status(500)
-            .json({ message: "Failed to process password securely." });
+    if (!(0, validators_1.isPasswordStrong)(password)) {
+        return res.status(400).json({
+            message: "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character.",
+        });
     }
-    // --- 3. Create User in Database ---
-    try {
-        const newUser = yield prisma.user.create({
+    // Check user does not already exist (email or username)
+    const existing = yield prisma.user.findFirst({
+        where: { email },
+        select: {
+            id: true,
+            name: true,
+            isVerified: true
+            // Add more fields if needed
+        },
+    });
+    // Generate OTP and hash password
+    const otpCode = generateOtp();
+    const passwordHash = yield bcryptjs_1.default.hash(password, 10); // salt rounds = 10
+    const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+    if (existing) {
+        if (existing.isVerified) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+        yield prisma.user.update({
+            where: { email },
             data: {
                 name,
+                password: passwordHash,
+                otp: otpCode,
+                expiresAt,
+            },
+        });
+    }
+    else {
+        yield prisma.user.create({
+            data: {
                 email,
-                password: hashedPassword, // Store the hashed password
-                // createdAt and updatedAt are automatically handled by Prisma
-            },
-            // Select fields to return – important for security (NEVER return the password)
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                createdAt: true,
+                name,
+                password: passwordHash,
+                otp: otpCode,
+                expiresAt: expiresAt
             },
         });
-        // --- 4. Send Success Response ---
-        return res.status(201).json({
-            message: "User registered successfully!",
-            user: newUser, // Send back the newly created user's safe data
+    }
+    // Send OTP email
+    try {
+        yield transporter.sendMail({
+            from: process.env.SMTP_FROM,
+            to: email,
+            subject: "Your Registration OTP",
+            text: `Your one-time code is: ${otpCode}`,
         });
+        res.json({ message: "OTP sent to email" });
     }
-    catch (error) {
-        return res
-            .status(500)
-            .json({ message: "An unexpected error occurred during registration." });
-    }
-    finally {
-        // Disconnect Prisma Client after the operation
-        // For long-running Express apps, you might manage connection pooling differently.
-        yield prisma.$disconnect();
+    catch (err) {
+        console.error("Error sending OTP email:", err);
+        res.status(500).json({ error: "Failed to send OTP" });
     }
 });
 exports.registerUser = registerUser;
+const verifyOTP = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+        return res.status(400).json({ error: "Missing fields" });
+    }
+    // console.log(otpStore);
+    const user = yield prisma.user.findUnique({
+        where: {
+            email
+        },
+        select: {
+            expiresAt: true,
+            otp: true
+            // Add more fields if needed
+        },
+    });
+    if (!user) {
+        return res.status(400).json({ error: "User not found" });
+    }
+    // Verify OTP and expiration
+    if (user.expiresAt && user.expiresAt < new Date()) {
+        return res.status(400).json({ error: "OTP has expired" });
+    }
+    if (user.otp !== otp) {
+        return res.status(400).json({ error: "Invalid OTP code" });
+    }
+    // Create the new user in the database
+    try {
+        yield prisma.user.update({
+            where: {
+                email
+            },
+            data: {
+                isVerified: true
+            },
+        });
+        res.json({ message: "Registration complete" });
+    }
+    catch (err) {
+        console.error("Error creating user:", err);
+        res.status(500).json({ error: "Registration failed" });
+    }
+});
+exports.verifyOTP = verifyOTP;
+// export const registerUser = async (req: Request, res: Response) => {
+//   const {  name, email, password } = req.body;
+//   // console.log("Received registration request:", req.body); // For debugging purposes
+//   // --- 1. Basic Input Validation ---
+//   if (!name || !email || !password ) {
+//     return res
+//       .status(400)
+//       .json({ message: "fullName, username, email, and password are all required fields." });
+//   }
+//   // --- 2. Password Hashing ---
+//   const saltRounds = 10; // Recommended number of salt rounds for bcrypt
+//   let hashedPassword;
+//   try {
+//     hashedPassword = await bcrypt.hash(password, saltRounds);
+//   } catch (error) {
+//     console.error("Error hashing password:", error);
+//     return res
+//       .status(500)
+//       .json({ message: "Failed to process password securely." });
+//   }
+//   // --- 3. Create User in Database ---
+//   try {
+//     const newUser = await prisma.user.create({
+//       data: {
+//         name,
+//         email,
+//         password: hashedPassword, // Store the hashed password
+//         // createdAt and updatedAt are automatically handled by Prisma
+//       },
+//       // Select fields to return – important for security (NEVER return the password)
+//       select: {
+//         id: true,
+//         name: true,
+//         email: true,
+//         createdAt: true,
+//       },
+//     });
+//     // --- 4. Send Success Response ---
+//     return res.status(201).json({
+//       message: "User registered successfully!",
+//       user: newUser, // Send back the newly created user's safe data
+//     });
+//   } catch (error) {
+//     return res
+//       .status(500)
+//       .json({ message: "An unexpected error occurred during registration." });
+//   }
+// };
 const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // req body -> data
     // username or email

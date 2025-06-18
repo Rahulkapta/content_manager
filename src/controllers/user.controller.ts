@@ -43,6 +43,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 };
 
 export const getCurrentUser = async (req: Request, res: Response) => {
+  console.log(req.user)
   if (!req.user) {
     return res
       .status(401)

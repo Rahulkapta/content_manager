@@ -10,13 +10,18 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  name      String
-  password  String
-  posts     Post[]    @relation("UserPosts")
-  comments  Comment[] @relation("UserComments")
-  createdAt DateTime  @default(now())
+  id         Int       @id @default(autoincrement())
+  email      String    @unique
+  name       String
+  password   String
+  otp        String?   
+  expiresAt  DateTime?
+  isVerified Boolean   @default(false)
+  posts      Post[]    @relation("UserPosts")
+  comments   Comment[] @relation("UserComments")
+  createdAt  DateTime  @default(now())
+
+  @@map("User")
 }
 
 model Post {

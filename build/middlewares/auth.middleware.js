@@ -37,9 +37,11 @@ const verifyJWT = (req, res, next) => __awaiter(void 0, void 0, void 0, function
     try {
         // 2. Verify the token
         const decoded = jsonwebtoken_1.default.verify(token, ACCESS_TOKEN_SECRET);
+        console.log(decoded);
         if (!(decoded === null || decoded === void 0 ? void 0 : decoded.userId)) {
             return res.status(401).json({ message: "Invalid token payload" });
         }
+        const id = decoded.userId;
         // 3. Find the user in the database
         const user = yield prisma.user.findUnique({
             where: { id: Number(decoded.userId) },

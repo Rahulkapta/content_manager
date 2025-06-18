@@ -33,8 +33,8 @@ export const publishPost = async (req: Request, res: Response) => {
 
     const newPost = await prisma.post.create({
       data: {
-        title,
-        content: contentFile?.url, // fallback if only file is uploaded
+        title, 
+        content: contentFile?.url, 
         published: true,
         authorId: user.id,
       },

@@ -1,15 +1,15 @@
 
 import multer, { StorageEngine } from "multer";
 import path from "path";
-// import fs from "fs";
+import fs from "fs";
 import { Request } from "express";
 
-// const tempDir = path.join(__dirname, "../public/temp");
+const tempDir = path.join(__dirname, "../public/temp");
 
-// // Ensure the directory exists
-// if (!fs.existsSync(tempDir)) {
-//   fs.mkdirSync(tempDir, { recursive: true });
-// }
+// Ensure the directory exists
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+}
 
 // Set up disk storage with correct typing
 const storage: StorageEngine = multer.diskStorage({

@@ -39,7 +39,7 @@ const publishPost = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         const newPost = yield prisma.post.create({
             data: {
                 title,
-                content: contentFile === null || contentFile === void 0 ? void 0 : contentFile.url, // fallback if only file is uploaded
+                content: contentFile === null || contentFile === void 0 ? void 0 : contentFile.url,
                 published: true,
                 authorId: user.id,
             },

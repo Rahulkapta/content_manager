@@ -19,10 +19,10 @@ import userRouter from "./routes/user.routes"
 import postRouter from "./routes/post.routes"
 
 app.use("/api/auth", authRouter)
-app.use("/api", userRouter)
-app.use("/api/post", postRouter)
+app.use("/api/users", userRouter)
+app.use("/api", postRouter)
 
-
+//   "dev": "npx tsc && node ./build/server.js",
 
 
 

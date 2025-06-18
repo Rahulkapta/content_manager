@@ -10,8 +10,8 @@ import {
   
 } from "../controllers/post.controller";
 const router: Router = Router();
-
-router.route("/").post(verifyJWT, upload.single("content"), publishPost).get(verifyJWT,listPosts);
-router.route("/:id").get(verifyJWT, getPostById).patch(verifyJWT,upload.single("content"), updatePost).delete(verifyJWT, deletePost);
+router.route("/posts").get(verifyJWT,listPosts);
+router.route("/publish").post(verifyJWT, upload.single("content"), publishPost);
+router.route("/posts/:id").get(verifyJWT, getPostById).patch(verifyJWT,upload.single("content"), updatePost).delete(verifyJWT, deletePost);
 
 export default router;

@@ -19,6 +19,6 @@ const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const post_routes_1 = __importDefault(require("./routes/post.routes"));
 app.use("/api/auth", auth_routes_1.default);
-app.use("/api", user_routes_1.default);
-app.use("/api/post", post_routes_1.default);
+app.use("/api/users", user_routes_1.default);
+app.use("/api", post_routes_1.default);
 exports.default = app;
