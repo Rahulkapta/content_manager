@@ -2,13 +2,13 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import { otpStore } from "../utils/otpStore";
 import { randomInt } from "crypto";
 import { isPasswordStrong, isValidEmail } from "../utils/validators";
 import {
   generateAccessToken,
   generateRefreshToken,
 } from "../middlewares/auth.middleware";
+import { error } from "console";
 
 const prisma = new PrismaClient();
 // Configure nodemailer SMTP transporter
@@ -30,61 +30,90 @@ function generateOtp(): string {
 const OTP_EXPIRATION_MS = 5 * 60 * 1000;
 
 export const registerUser = async (req: Request, res: Response) => {
-  const { email, name, password } = req.body;
+  const { email, name, password, username } = req.body;
   // Basic validation
-  if (!email || !name || !password) {
+  if (!email || !name || !password || !username) {
     return res.status(400).json({ error: "Missing fields" });
   }
   if (!isValidEmail(email)) {
-  return res.status(400).json({ message: "Invalid email format" });
-}
-   if (!isPasswordStrong(password)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+  if (!isPasswordStrong(password)) {
     return res.status(400).json({
-      message:
+      error:
         "Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character.",
     });
   }
 
   // Check user does not already exist (email or username)
   const existing = await prisma.user.findFirst({
-    where: { email },
+    where: {
+      OR: [
+        { email: email }, // Check if email already exists
+        { username: username }, // Check if username already exists
+      ],
+    },
     select: {
-    id:true,
-    name : true,
-    isVerified: true
-    // Add more fields if needed
-  },
+      id: true,
+      email: true,
+      name: true,
+      username: true,
+      isVerified: true,
+      // Add more fields if needed
+    },
   });
 
- // Generate OTP and hash password
+  // Generate OTP and hash password
   const otpCode = generateOtp();
   const passwordHash = await bcrypt.hash(password, 10); // salt rounds = 10
   const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
-
+  console.log("existing", existing)
+  console.log("username", username)
 
   if (existing) {
-    if (existing.isVerified) {
-      return res.status(400).json({ message: "User already exists" });
+    if ((existing.username ===username  && existing.isVerified === true)||(existing.email ===email  && existing.isVerified === true)) {
+      return res.status(400).json({ error: "User with username or email is already registered" });
+    }else if ((existing.username === username && existing.isVerified === false)) {
+      return res.status(400).json({ error: " username  is already taken" });
     }
-    await prisma.user.update({
+    // else if ((existing.email === email && existing.isVerified === false)) {
+    //   return res.status(400).json({ error: " email  is already registered but not verified" });
+    // }
+    else{
+      await prisma.user.update({
       where: { email },
       data: {
+        email,
         name,
+        username,
         password: passwordHash,
         otp: otpCode,
         expiresAt,
       },
     });
-  }else{
+    }
+    await prisma.user.update({
+      where: { email },
+      data: {
+        email,
+        name,
+        username,
+        password: passwordHash,
+        otp: otpCode,
+        expiresAt,
+      },
+    });
+  } else {
     await prisma.user.create({
-  data: {
-    email,
-    name,
-    password: passwordHash,
-    otp: otpCode,
-    expiresAt: expiresAt
-  },
-});
+      data: {
+        email,
+        name,
+        username,
+        password: passwordHash,
+        otp: otpCode,
+        expiresAt: expiresAt,
+      },
+    });
   }
 
   // Send OTP email
@@ -95,7 +124,7 @@ export const registerUser = async (req: Request, res: Response) => {
       subject: "Your Registration OTP",
       text: `Your one-time code is: ${otpCode}`,
     });
-    res.json({ message: "OTP sent to email"});
+    res.json({ message: "OTP sent to email" });
   } catch (err) {
     console.error("Error sending OTP email:", err);
     res.status(500).json({ error: "Failed to send OTP" });
@@ -108,24 +137,23 @@ export const verifyOTP = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Missing fields" });
   }
   // console.log(otpStore);
-  
-  const user = await prisma.user.findUnique({
-  where: {
-    email
-  },
-   select: {
-    expiresAt:true,
-    otp: true
-    // Add more fields if needed
-  },
-});
-if (!user) {
-  return res.status(400).json({ error: "User not found" });
-}
 
+  const user = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      expiresAt: true,
+      otp: true,
+      // Add more fields if needed
+    },
+  });
+  if (!user) {
+    return res.status(400).json({ error: "User not found" });
+  }
 
   // Verify OTP and expiration
-  if (user.expiresAt && user.expiresAt< new Date()) {
+  if (user.expiresAt && user.expiresAt < new Date()) {
     return res.status(400).json({ error: "OTP has expired" });
   }
   if (user.otp !== otp) {
@@ -135,10 +163,10 @@ if (!user) {
   try {
     await prisma.user.update({
       where: {
-    email
-  },
+        email,
+      },
       data: {
-        isVerified: true 
+        isVerified: true,
       },
     });
     res.json({ message: "Registration complete" });
@@ -238,7 +266,7 @@ export const loginUser = async (req: Request, res: Response) => {
         name: true,
         email: true,
         password: true,
-        isVerified: true // <--- Select the hashed password for comparison!
+        isVerified: true, // <--- Select the hashed password for comparison!
         // Do NOT select other sensitive fields unless needed for immediate use
       },
     });
@@ -249,10 +277,15 @@ export const loginUser = async (req: Request, res: Response) => {
       // to avoid leaking whether an email exists or not.
       return res.status(401).json({ message: "Invalid credentials." });
     }
-    const { password: _, ...userWithoutPassword } = user; 
+    const { password: _, ...userWithoutPassword } = user;
 
     if (!user.isVerified) {
-      return res.status(400).json({message: " User is not verified to login!! plz verify", user: userWithoutPassword})
+      return res
+        .status(400)
+        .json({
+          message: " User is not verified to login!! plz verify",
+          user: userWithoutPassword,
+        });
     }
 
     // 4. Compare the provided plain-text password with the stored hashed password
@@ -266,13 +299,13 @@ export const loginUser = async (req: Request, res: Response) => {
 
     // 5. If passwords match, user is authenticated!
     //   Remove the password from the user object before sending it to the client
-  // Destructure to exclude password
+    // Destructure to exclude password
 
     const options = {
       httpOnly: true,
       secure: true,
     };
-    
+
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
@@ -290,5 +323,5 @@ export const loginUser = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ message: "An internal server error occurred during login." });
-  } 
+  }
 };
