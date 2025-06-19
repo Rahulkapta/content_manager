@@ -45,13 +45,11 @@ export const registerUser = async (req: Request, res: Response) => {
     });
   }
 
+
   // Check user does not already exist (email or username)
-  const existing = await prisma.user.findFirst({
+  const existingByEmail = await prisma.user.findFirst({
     where: {
-      OR: [
-        { email: email }, // Check if email already exists
-        { username: username }, // Check if username already exists
-      ],
+      email,
     },
     select: {
       id: true,
@@ -63,39 +61,54 @@ export const registerUser = async (req: Request, res: Response) => {
     },
   });
 
-  // Generate OTP and hash password
+  const existingByUsername = await prisma.user.findFirst({
+    where: {
+      username,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      username: true,
+      isVerified: true,
+    },
+  });
+
+  
+// Check for verified users with same email or username
+  if (existingByEmail?.isVerified) {
+    return res
+      .status(400)
+      .json({ error: "Email is already registered and verified" });
+  }
+  if (existingByUsername?.isVerified) {
+    return res
+      .status(400)
+      .json({ error: "Username is already registered and verified" });
+  } 
+  //  Check if username is taken by someone else
+  if (
+    existingByUsername &&
+    (!existingByEmail || existingByUsername.email !== existingByEmail.email)
+  ) {
+    return res.status(400).json({ error: "Username is already taken" });
+  } 
+
+// Generate OTP and hash password
   const otpCode = generateOtp();
   const passwordHash = await bcrypt.hash(password, 10); // salt rounds = 10
   const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
-  console.log("existing", existing)
-  console.log("username", username)
 
-  if (existing) {
-    if ((existing.username ===username  && existing.isVerified === true)||(existing.email ===email  && existing.isVerified === true)) {
-      return res.status(400).json({ error: "User with username or email is already registered" });
-    }else if ((existing.username === username && existing.isVerified === false)) {
-      return res.status(400).json({ error: " username  is already taken" });
-    }
-    // else if ((existing.email === email && existing.isVerified === false)) {
-    //   return res.status(400).json({ error: " email  is already registered but not verified" });
-    // }
-    else{
-      await prisma.user.update({
-      where: { email },
-      data: {
-        email,
-        name,
-        username,
-        password: passwordHash,
-        otp: otpCode,
-        expiresAt,
-      },
-    });
-    }
+  // Update existing unverified user OR create a new one
+
+  if (
+    existingByEmail &&
+    (!existingByUsername || existingByEmail.id === existingByUsername.id) &&
+    !existingByEmail.isVerified
+  ) {
     await prisma.user.update({
       where: { email },
       data: {
-        email,
         name,
         username,
         password: passwordHash,
@@ -103,7 +116,8 @@ export const registerUser = async (req: Request, res: Response) => {
         expiresAt,
       },
     });
-  } else {
+  }
+   else {
     await prisma.user.create({
       data: {
         email,
@@ -280,12 +294,10 @@ export const loginUser = async (req: Request, res: Response) => {
     const { password: _, ...userWithoutPassword } = user;
 
     if (!user.isVerified) {
-      return res
-        .status(400)
-        .json({
-          message: " User is not verified to login!! plz verify",
-          user: userWithoutPassword,
-        });
+      return res.status(400).json({
+        message: " User is not verified to login!! plz verify",
+        user: userWithoutPassword,
+      });
     }
 
     // 4. Compare the provided plain-text password with the stored hashed password
