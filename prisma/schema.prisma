@@ -9,6 +9,8 @@ datasource db {
  url      = env("DATABASE_URL")
 }
 
+
+
 model User {
   id          Int            @id @default(autoincrement())
   email       String         @unique
@@ -26,13 +28,20 @@ model User {
   @@map("User")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 model UserDetails {
   id             Int        @id @default(autoincrement())
   userId         Int        @unique
   profilePicture String?
   bio            String?
   website        String?
-  gender         String?
+  gender         Gender?
   birthDate      DateTime?
   phone          String?
   location       String?

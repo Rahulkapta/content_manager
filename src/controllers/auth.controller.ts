@@ -280,7 +280,8 @@ export const loginUser = async (req: Request, res: Response) => {
         name: true,
         email: true,
         password: true,
-        isVerified: true, // <--- Select the hashed password for comparison!
+        isVerified: true, 
+        username:true// <--- Select the hashed password for comparison!
         // Do NOT select other sensitive fields unless needed for immediate use
       },
     });

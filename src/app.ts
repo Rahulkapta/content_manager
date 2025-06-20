@@ -17,10 +17,12 @@ app.use(cors());
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import postRouter from "./routes/post.routes"
+import userDetailsRouter from "./routes/userDetails.routes"
 
 app.use("/api/auth", authRouter)
 app.use("/api/users", userRouter)
 app.use("/api", postRouter)
+app.use("/api", userDetailsRouter)
 
 //   "dev": "npx tsc && node ./build/server.js",
 

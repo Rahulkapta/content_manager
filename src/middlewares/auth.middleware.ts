@@ -51,6 +51,9 @@ export const verifyJWT = async (req: Request, res: Response, next: NextFunction)
         id: true,
         name: true,
         email: true,
+        isVerified:true,
+        username:true,
+        userDetails:true
       },
     });
 
