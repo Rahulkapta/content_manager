@@ -13,6 +13,6 @@ router
   .route("/update-picture")
   .post(verifyJWT, upload.single("profilePicture"), updateProfilePicture);
 router.route("/update-UserDetails").post(verifyJWT, createUserDetails);
-router.route("/UserDetails").get(verifyJWT, getUserDetails);
+router.route("/profile").get(verifyJWT, getUserDetails);
 
 export default router;

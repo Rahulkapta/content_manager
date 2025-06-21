@@ -3,18 +3,17 @@ import { PrismaClient } from "@prisma/client";
 import { uploadOnCloudinary } from "../utils/cloudinary";
 const prisma = new PrismaClient();
 
-
-export const updateProfilePicture = async(req:Request, res:Response)=>{
+export const updateProfilePicture = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const file = req.file;
-  console.log(file);
-  
+  // console.log(file);
+
   if (!userId) {
-    return res.status(401).json({ error: "Unauthorized" }); 
+    return res.status(401).json({ error: "Unauthorized" });
   }
   const contentfilePath = file?.path;
 
-   if (!contentfilePath) {
+  if (!contentfilePath) {
     return res.status(400).json({ message: "file is required." });
   }
   const contentFile = await uploadOnCloudinary(String(contentfilePath));
@@ -40,7 +39,6 @@ export const updateProfilePicture = async(req:Request, res:Response)=>{
       return res
         .status(200)
         .json({ message: "Profile picture updated", ProfilePicture: updated });
-      
     } else {
       // Create new user details
       const created = await prisma.userDetails.create({
@@ -58,20 +56,17 @@ export const updateProfilePicture = async(req:Request, res:Response)=>{
     console.error("Error saving user details:", err);
     return res.status(500).json({ error: "Failed to save user details" });
   }
-
-}
+};
 
 export const createUserDetails = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   // console.log("called createUserDetails", userId);
-  
-  
 
   if (!userId) {
-    return res.status(401).json({ error: "Unauthorized" }); 
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const {
+  let {
     bio,
     website,
     gender,
@@ -82,13 +77,24 @@ export const createUserDetails = async (req: Request, res: Response) => {
     language,
   } = req.body;
 
-  // console.log(req.body);
-  
+  const validGenders = ["MALE", "FEMALE", "OTHER", "NOT_SPECIFIED"];
+  if (!validGenders.includes(gender)) {
+    gender = undefined; // Don't include if invalid or empty
+  }
 
-  
-  // console.log("filepath", contentfilePath);
+   const dataToSave: any = {
+    bio,
+    website,
+    birthDate: birthDate ? new Date(birthDate) : undefined,
+    phone,
+    location,
+    isPrivate: Boolean(isPrivate),
+    language,
+  };
+   if (gender) {
+    dataToSave.gender = gender;
+  }
 
-  
   try {
     const existingDetails = await prisma.userDetails.findUnique({
       where: { userId },
@@ -98,40 +104,21 @@ export const createUserDetails = async (req: Request, res: Response) => {
       // Update existing user details
       const updated = await prisma.userDetails.update({
         where: { userId },
-        data: {
-          bio,
-          website,
-          gender,
-          birthDate: birthDate ? new Date(birthDate) : undefined,
-          phone,
-          location,
-          isPrivate: Boolean(isPrivate),
-          language,
-        },
+        data: dataToSave
       });
 
       return res
         .status(200)
-        .json({ message: "User details updated", uuserDetails: updated });
+        .json({ message: "User details updated", userDetails: updated });
     } else {
       // Create new user details
       const created = await prisma.userDetails.create({
-        data: {
-          userId,
-          bio,
-          website,
-          gender,
-          birthDate: birthDate ? new Date(birthDate) : undefined,
-          phone,
-          location,
-          isPrivate: Boolean(isPrivate),
-          language,
-        },
+        data: {userId, ...dataToSave}
       });
 
       return res
         .status(201)
-        .json({ message: "User details created", cuserDetails: created });
+        .json({ message: "User details created", userDetails: created });
     }
   } catch (err) {
     console.error("Error saving user details:", err);
@@ -139,11 +126,9 @@ export const createUserDetails = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getUserDetails = async (req: Request, res: Response) => {
   const userId = req.user?.id; // or from req.params if passed in URL
-  // console.log(req.user);
-  
+  console.log(req.user);
 
   if (!userId) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -155,13 +140,13 @@ export const getUserDetails = async (req: Request, res: Response) => {
     });
 
     if (!userDetails) {
-      return res.status(404).json({ error: "User details not found" });
+      return res.status(200).json({ userDetails: {} });
     }
-    // console.log(userDetails)
+    // console.log("userdetails", userDetails);
 
-    return res.status(200).json({ userDetails, user: req.user });
+    return res.status(200).json({ userDetails });
   } catch (err) {
     console.error("Error fetching user details:", err);
-    return res.status(500).json({ error: "Failed to fetch user details" });
+    // return res.status(500).json({ error: "Failed to fetch user details" });
   }
 };
